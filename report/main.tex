@@ -1,0 +1,218 @@
+\documentclass{article}
+\usepackage[legalpaper, margin=0.8in]{geometry}
+\usepackage{float}
+\usepackage{graphicx} % Required for inserting images with \includegraphics command.
+
+% Required in order to use in-page links in the table of contents
+% Option "hidelinks" used to hide links border in some pdf reader such as Acrobat Reader.
+\usepackage[hidelinks]{hyperref} 
+
+\usepackage[utf8]{inputenc}
+
+%Package imported in order to customize cells in tabularx environment. In particular was added to allow the use of "\\" syntax inside a table's cell.
+\usepackage{makecell}
+
+%Packages and instruction to change scale of sections', subsections' and subsubsections' heads
+\usepackage{titlesec}
+\usepackage{titlesec}
+%Makes sections' contents in bold, and increases their sizes.
+\titleformat*{\section}{\huge\bfseries}
+%Same thing as above but for subsections
+\titleformat*{\subsection}{\LARGE\bfseries}
+%Same thing as above but for subsubsections
+\titleformat*{\subsubsection}{\Large\bfseries}
+
+%Instruction used to create a new subsection level (subsubsubsection) in the document
+\titleclass{\subsubsubsection}{straight}[\subsection]
+%Instructions used to create a new counter (used to count the number of subsubsubsections
+%within a subsubsection) for the subsubsubsections and creation of the command to invoke(use) them
+\newcounter{subsubsubsection}[subsubsection]
+\renewcommand\thesubsubsubsection{\thesubsubsection.\arabic{subsubsubsection}}
+
+%Instruction used to align the new section layer in a correct manner in the table of contents
+%Without this subsubsubsections would remain on the same line, creating a mess in the table of
+%contents.
+\makeatletter
+
+%Instructions to change the scale and font of the subsubsubsections' head
+\titleformat{\subsubsubsection}
+  {\normalfont\large\bfseries}{\thesubsubsubsection}{1em}{}
+\titlespacing*{\subsubsubsection}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+%Instructions to create the subsubsubsections entries in the table of contents (included the dot line)
+\def\toclevel@subsubsubsection{4}
+\def\l@subsubsubsection{\@dottedtocline{4}{7em}{4em}}
+
+%Instruction used to restore "@" symbol to "other" instead of a "latter" made by
+%\makeatletter command. Just a safety command useful for latex but not of our interest.
+\makeatother
+
+%Instructions to set table of contents and sections depth to 4 layers (in order to include even
+%subsubsubsections).
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+
+%Used in order to have more symbols for itemize lists (in our case the "arrow" symbol in phenomena section)
+\usepackage{pifont}
+
+%Used to make the header and footer of each document page
+\usepackage{fancyhdr}
+
+%Defines a new style of header and footer
+%Defines the content of the header and the footer of the pages of the first section
+\fancypagestyle{PageStyle}{
+\fancyhf{}
+\fancyhead[L]{\textit{\textbf{DIQ project report}}}
+\fancyfoot[L]{Francesco Ferlin (10717750)\quad -\quad Francesco Riccardi (10741078)\quad -\quad Francesco Spangaro (10734844)}
+\rfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+}
+
+%Used to handle table width and split tables across different pages
+\usepackage{xltabular}
+%Change space between table columns
+\setlength{\tabcolsep}{13pt}
+
+%Command used to create a new column type whose background is lightgray colored
+\usepackage{xcolor,colortbl}
+\definecolor{LightGray}{gray}{0.85}
+\newcolumntype{g}{>{\columncolor{LightGray}}c}
+
+
+%Set the default path of images (used in includegraphics command)
+\graphicspath{ {images/} }
+
+% Have a decent looking tilde in text
+\newcommand{\mytilde}{\raise.17ex\hbox{$\scriptstyle\sim$}}
+
+\title{\Huge{
+\begin{center}
+    \textbf{Data and Information Quality}
+\end{center}
+\begin{center}
+    \textbf{project report}
+\end{center}
+}}
+\author{\Large{Francesco Ferlin - Francesco Riccardi - Francesco Spangaro}}
+\date{17 January 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.6]{politecnico-di-milano-logo.png}
+\end{figure}
+
+\begin{center}
+      \large{Academic Year 2024 - 2025}
+\end{center}
+\begin{center}
+    \large{Assigned dataset: 11}
+\end{center}
+
+\tableofcontents
+
+\newpage
+\pagestyle{PageStyle}
+\section{Setup choices}
+For ease of collaboration, we decided to use a Google Colab Notebook, so that we could easily share our work. Additionally, to avoid having to re-download the dataset each time, we have embedded it in the notebook itself with a large base64 gzipped string, which we convert and extract right at the start.
+
+As the main DataFrame library, we used pandas. In addition, we used some of the numpy functions to perform more specific operations.
+
+We have decided to use the SweetViz library to generate reports, as it allows us to easily and quickly visualize dataset information at multiple points, allowing us to check that what we are doing is correct.
+
+As plotting libraries, we have used matplotlib for general plots and missingno 
+for quickly checking for missing values. In addition, we used the scatter\_matrix plot from pandas.
+
+For the machine learning algorithms, we used the sklearn library, both in the missing value handling section, the outliers detection section, and in the final performance evaluation. Additionally, we imported and used a slightly modified version of the function to encode categorical data which we have seen in TA lecture 5.
+
+To discover association rules, we have used the fpgrowth algorithm, importing it from the mlxtend library.
+
+Finally, to perform the duplicate value detection, we have used the blocking and sorted neighbors algorithms implemented by the RecordLinkage library, as well as the Jaro-Wrinkler distance (from the jaro library), the edit distance (implemented inside the RecordLinkage library itself) and the Jaccard distance (whose implementation we have taken from the TA lectures).
+
+\section{Pipeline Implementation}
+
+\subsection{Data exploration}
+We analyzed the columns' type. We looked at the three numeric columns and found that 'ZD' is actually a categorical data type, as it is a value between 1 and 9, representing Milan's different zones. 'Codice Via' is an identifier that represents Milan's every single street. We found that a single street can be part of multiple different zones (since it can cross the border of the two). 'Superficie somministrazione' is the only actual quantitative value and represents the number of square meters of every establishment. 
+
+Further, we observed that 'Forma commercio', 'Forma commercio prev' and 'Forma vendita' are also categorical columns with a very small set of valid values. We assumed that the 'prev' stands for 'prevalent', since for some establishments 'Forma commercio' includes both 'minuto': key word indicating that retail products are being sold in the establishment, and 'somministrazione': key word indicating that food is being served to customers in the establishment. 'Forma commercio prev' indicates the prevalent service that is being offered in the establishment between 'minuto' and 'somministrazione'.
+
+We looked at 'Ubicazione' and noticed that it groups in a single column the data of 'Tipo via', 'Descrizione via', 'Civico', 'ZD', and adds additional information in a semiformatted manner.
+
+We analyzed 'Tipo esercizio storico pe' and 'Settore storico pe'. The two columns seem to be related, with the first being a categorical column indicating the establishment's type (i.e. bar, restaurant, etc) and the second expanding on that by providing more details (such as a specifying that a restaurant may also be a bar). In particular, the latter column seems to be an array of tags separated by a semicolon ';'.
+
+\subsection{Data profiling}
+By looking at the distinctness and uniqueness, we confirmed the findings of the previous sections: we have many categorical columns with low uniqueness and distinctness. We have 'Ubicazione' and 'Settore storico pe' which are the two with the highest percentage of unique values since, as stated before, they aggregate multiple information in a semi-formatted way.
+'Insegna' has a high degree of distinctness, but a lower uniqueness, as it also has a low completeness.
+
+We looked at the statistics of the only quantitative column: 'Superficie somministrazione'. The values are in range of 2 to 2336, with the mean, mode, standard deviation, and histogram all indicating that most values are $< 250$ and only very few are above 500, which will need to be further investigated in outliers detection.
+
+Lastly, we looked at correlation and associations but did not find anything significant, other than 'ZD' and 'Codice via' having high association, which makes sense as for the most part a street is in a single zone except for rare exceptions.
+
+\subsection{Data transformation and wrangling}
+\subsubsection{Ubicazione}
+We have decided to start the data transformation part by analyzing the column 'Ubicazione' because, as we have seen before, it has redundant addressing information found in other columns, plus additional data which could be extracted and standardized.
+
+We noticed that there are some rows that have two values in the same cell separated by '$\backslash$n'. We have decided to eliminate the second ones, as they seemed mismatching with the rest of the attributes of those rows. We noticed that very few had a completely different format, starting with 'codvia ...', and were completely mismatching with the rest; we dropped those as we were not able to tell which information was correct. We split by the 'z.d.' string and checked that it would match the already present 'ZD' column; if not, we decided to drop the row. By doing this, we have eliminated 31 rows. 
+
+We have observed that we have three attributes 'accesso', 'isolato' and 'ingresso' that could be extracted from this column and are not already present in the DB, so we extracted them when present and added in new columns. 
+
+We performed the same mismatch analysis as the first point for the attributes 'Civico' and 'Tipo Via', dropping two values because the two 'Civico' were not matching. We use these new values to fill the missing values of the row when needed.
+
+\subsubsection{Settore storico pe}
+As noticed during the data exploration phase, we standardized the 'Settore storico pe' column, as it looked like an array of tags separated by colons and semicolons. We decided to explode all tags in a series of boolean columns, as they would become easier to use later on.
+
+We split all strings by the separator and collected in a set all possible tags that could appear. We noticed that some tags were very similar, so we proceeded to put those together and consider them to be the same. Since there were quite a few tags, we decided not to do this manually but to use some of the functions typically employed in duplicate detection. We matched strings to be the same, either when the Jaro–Winkler distance had a threshold greater than 0.85 to catch abbreviations or when the Jaccard index was greater than 0.50 to catch cases where they would differ due to additional words. Once these groups were formed, we proceeded to explode the 'Settore storico pe' column in multiple boolean columns, one for each record. Since the resulting columns were quite a few, we removed all the ones with less than 4\% of values set to True. We then proceeded to merge the ones which escaped the automatic analysis, such as 'birreria' and 'birr.', where the distance between the two words is too big, and renamed all columns to more appropriate ones.
+
+To keep things consistent, we merged and renamed some categories of 'Tipo esercizio storico pe'.
+
+\subsection{Association rules}
+Since most of our columns are categorical, we decided to look for association rules rather than functional dependencies.
+
+We decided to remove from the base set of columns all the ones that were specific to the single business establishment, like 'Insegna' or any other column relative to the address of each business. We were left with all the non-numerical columns in the dataset, like 'Tipo esercizio storico pe' and the ones extracted from 'Settore storico pe'. 
+
+We then evaluated the association rules. We used a 5\% support and 80\% confidence, but it resulted in way too many rules, on the order of 13k rules. To reduce the number of rules, we increased the support to 25\% which left us with a much lower number, but still too many. We noticed that most rules would have high confidence and a consequent with 'bar caffè e simili' while not really making sense, which would happen as that specific column had a very high support. To counter this, we employed Zhangs metric, which should help in this specific case, and set its minimum threshold to 0.65. This left us with around 40 rules, which we then proceeded to manually inspect, as most of them looked too similar, and we ended up choosing to apply 6 rules in total.
+
+\subsection{Missing values handling}
+From the missing value matrix we have seen a recap of what we previously found in the exploration phase: there are a few columns with missing values, 'Superficie somministrazione' has very few ones missing and 'Insegna' has a sizable amount missing.
+
+We started by filling 'Tipo esercizio storico pe': as previously found, it is closely related to 'Settore storico pe'. We used the columns extracted from there to fill it using a linear model. We opted to use a linear model as we assumed their relationship to be simple, so it should suffice. We opted against using all columns as it would overload the model with potentially useless data, taking much longer to compute, and being less accurate at a quick sight. We used a similar reasoning to fill 'Forma vendita', 'Forma commercio', 'Forma commercio prev', additionally using the 'Tipo esercizio storico pe' column as input. We filled 'Superficie somministrazione' with the same reasoning but also using 'Codice via' and 'ZD', as the location might help in deducing the size.
+
+We filled 'Ingresso' and 'Accesso' using standard values. For 'Ingresso', we used 'sulla via principale', since in the data exploration phase we noticed that the few values that are already present describe the cases where the entrance is not on the street indicated by the address. For 'Access' we used 'accesso esterno' under the assumption that most places have an external access if not specified.
+
+This leaves us with only 'Insegna' and 'Isolato' having missing values. We opted to leave them as is, as both informations are not deducible in any way from the rest of the data we have.
+
+\subsection{Outliers detection}
+Based on what we found during the data profiling phase, the most likely outliers will be on the 'Superficie somministrazione' column. Since we have many columns in the dataset that can be used to separate data in clusters, such as the street or the establishment type, we decided to use the Local Outlier Factor (LOF) technique, as it is a distance-based outlier detection technique, so it should be able to detect the outliers for each category we feed the algorithm. 
+
+To avoid overloading the algorithm with data, we only used columns that may actually be related to the size of an activity, such as the location, so the streed and the ZD, and the activity type, as a bar is most likely smaller than a restaurant.
+
+All results were then plotted and shown as a scatter matrix. To ease visualization, we represented all the sector boolean columns as a bitmask.
+
+We analyzed the resulting records by taking a few samples and checking with Google Maps whether the activity could actually be of the specified size. What we found was mostly all of them seemed to be correct; in particular, the few sizable places with $>1000$ square meters looked like restaurants inside hotels, which explained their size. We decided to keep the records identified as outliers.
+
+\subsection{Duplicates detection}
+As a first coarser filter, we dropped all columns that were an exact match to another entry in the dataset. We tried compiling with record linkage without blocking or sorted neighborhood, and checked the number of comparisons needed to check for duplicate detection in the dataset. As this number was way too high to use efficiently: \mytilde23 millions. We tried doing the same thing with blocking on 'ZD' and blocking on 'Descrizione via'. The results were both still unacceptable, as the comparison number on 'ZD' blocking was still too high to use: \mytilde3 millions, while the comparison number on 'Descrizione via' was too low to be considered precise enough: \mytilde33k. We decided to use the sorted neighborhood approach on 'Descrizione via', as after evaluating the number of comparisons needed with a window size of value 9 we found an acceptable amount of comparisons: \mytilde135k. 
+
+We specified, for tuples to be considered duplicates of one another, that the parameters that needed to be checked were: 'Tipo via', 'Descrizione via' and 'Civico' with exact matching, 'Insegna' was to be compared with Levenshtein's distance method. 
+
+To compare the 'Settore storico' we noticed a problem: the exact matching algorithm would give scores too high. As an example, given two 'Settore storico' entries that had each value set to 'false' except for one, with the first being a bar and the second a restaurant, they would get a score of 16/18=88\%, where it should clearly have been 0.
+We had to define a new method to compare those columns, so given two 'Settore storico' columns relative to two different dataset entries, we use the ratio: $\frac{columns\ with\ both\ records\ having\ 1}{columns\ with\ at\ least\ one\ record\ having\ 1}$. With this implementation, the previous example would correctly score 0.
+
+We compares the 'Superficie somministrazione' with a scale of 5, to obviate any small differences in duplicate entries. 
+
+After having evaluated all these parameters, we decided that entries with a score higher than 4.49 were to be considered as duplicates in the dataset and were dropped, keeping only the record with the highest completeness among each duplicate.
+
+\section{Results and conclusions}
+
+\subsection{Performance evaluation}
+We performed a classification analysis using 'Tipo esercizio storico pe' for the target column and a K-neighbor classifier; we chose this column since it is the one that best represents the objective of the dataset. We performed it on the dirty dataset and then on the cleaned one and compared the results.
+
+\subsection{Conclusions}
+We observed a good improvement: for example, in an average run, precision went from 30\% in the dirty dataset to 44\% in the cleaned one, the recall improved greatly: from 20\% to 55\% and the f1 score improved even more: going from 7\% to 45\%. We can explain this result since in our initial dataset there were quite a lot of NaN values, and additionally, some information was not standardized, making it difficult for the predictor to use it. As such, we are satisfied with the achieved data quality level. 
+
+\end{document}
