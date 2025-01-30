@@ -2,6 +2,8 @@
 
 Project of the course Data and Information Quality
 
+**Grade**: 4/4
+
 - Each group is assigned a different dirty dataset.
 - A complete Data Preparation Pipeline on the assigned dataset must be executed with the following steps:
 
